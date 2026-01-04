@@ -872,9 +872,16 @@
 							}
 						});
 						if (nextEpisodeSpan) {
+							var prevSplit = nextEpisodeSpan.prev(".full-start-new__split");
+							var nextSplit = nextEpisodeSpan.next(".full-start-new__split");
+							nextEpisodeSpan.detach();
+							if (prevSplit.length && nextSplit.length) {
+								nextSplit.remove();
+							} else {
+								prevSplit.remove();
+								nextSplit.remove();
+							}
 							nextEpisodeSpan.css("width", "100%");
-							nextEpisodeSpan.prev(".full-start-new__split").remove();
-							nextEpisodeSpan.next(".full-start-new__split").remove();
 							details.append(nextEpisodeSpan);
 						}
 					}
