@@ -40,7 +40,9 @@
 		var card = preloadQueue.shift();
 
 		fetchRating(card, function () {
-			setTimeout(processPreloadQueue, 50);
+			fetchCubRating(card, function () {
+				setTimeout(processPreloadQueue, 50);
+			});
 		});
 	}
 
@@ -217,7 +219,7 @@
 		);
 	}
 
-	function saveCache(id, kp, imdb) {
+	function saveCache(id, kp, imdb, cub) {
 		var cache = Lampa.Storage.get("kp_rating", "{}");
 		if (typeof cache === "string") {
 			try {
@@ -240,8 +242,66 @@
 			});
 		}
 
-		cache[id] = { kp: kp, imdb: imdb, timestamp: Date.now() };
+		var entry = { kp: kp, imdb: imdb, timestamp: Date.now() };
+		if (cub !== undefined) entry.cub = cub;
+		else if (cache[id] && cache[id].cub) entry.cub = cache[id].cub;
+		cache[id] = entry;
 		Lampa.Storage.set("kp_rating", cache);
+	}
+
+	function saveCubCache(id, cubData) {
+		var cache = Lampa.Storage.get("kp_rating", "{}");
+		if (typeof cache === "string") {
+			try {
+				cache = JSON.parse(cache);
+			} catch (e) {
+				cache = {};
+			}
+		}
+
+		if (cache[id]) {
+			cache[id].cub = cubData;
+			cache[id].timestamp = Date.now();
+		} else {
+			cache[id] = { kp: 0, imdb: 0, cub: cubData, timestamp: Date.now() };
+		}
+		Lampa.Storage.set("kp_rating", cache);
+	}
+
+	function fetchCubRating(card, callback) {
+		if (!card || !card.id) {
+			if (callback) callback();
+			return;
+		}
+
+		var cached = getCache(card.id);
+		if (cached && cached.cub !== undefined) {
+			if (callback) callback();
+			return;
+		}
+
+		var isTv = !!(card.name || card.first_air_date);
+		var method = isTv ? "tv" : "movie";
+		var cubDomain = Lampa.Manifest.cub_domain;
+		var url = Lampa.Utils.protocol() + cubDomain + "/api/reactions/get/" + method + "_" + card.id;
+
+		var network = new Lampa.Reguest();
+		network.timeout(5000);
+		network.silent(
+			url,
+			function (json) {
+				var cubData = null;
+				if (json && json.result && json.result.length) {
+					cubData = json.result;
+				}
+				saveCubCache(card.id, cubData);
+				if (callback) callback();
+			},
+			function () {
+				saveCubCache(card.id, null);
+				if (callback) callback();
+			},
+		);
 	}
 
 	function getCache(id) {
@@ -376,21 +436,31 @@
 		if (!rateCub.hasClass("hide")) return;
 
 		var isTv = !!e.object.method && e.object.method === "tv";
+		var card = e.data.movie;
+		var cached = card && card.id ? getCache(card.id) : null;
+		var reactions = null;
+
+		if (cached && cached.cub && cached.cub.length) {
+			reactions = cached.cub;
+		} else if (e.data && e.data.reactions && e.data.reactions.result && e.data.reactions.result.length) {
+			reactions = e.data.reactions.result;
+			if (card && card.id) saveCubCache(card.id, reactions);
+		}
+
+		if (!reactions || !reactions.length) return;
+
 		var minCnt = 20;
 		var reactionCoef = { fire: 10, nice: 7.5, think: 5, bore: 2.5, shit: 0 };
 		var reactionCnt = {};
 		var sum = 0,
 			cnt = 0;
 
-		if (e.data && e.data.reactions && e.data.reactions.result) {
-			var reactions = e.data.reactions.result;
-			for (var i = 0; i < reactions.length; i++) {
-				var coef = reactionCoef[reactions[i].type];
-				if (reactions[i].counter) {
-					sum += reactions[i].counter * coef;
-					cnt += reactions[i].counter * 1;
-					reactionCnt[reactions[i].type] = reactions[i].counter * 1;
-				}
+		for (var i = 0; i < reactions.length; i++) {
+			var coef = reactionCoef[reactions[i].type];
+			if (reactions[i].counter) {
+				sum += reactions[i].counter * coef;
+				cnt += reactions[i].counter * 1;
+				reactionCnt[reactions[i].type] = reactions[i].counter * 1;
 			}
 		}
 
