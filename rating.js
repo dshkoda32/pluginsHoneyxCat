@@ -52,7 +52,7 @@
 		var orig = card.original_title || card.original_name;
 		var apiUrl = "https://kinopoiskapiunofficial.tech/";
 		var ratingUrl = "https://rating.kinopoisk.ru/";
-		var headers = { "X-API-KEY": "2a4a0808-81a3-40ae-b0d3-e11335ede616" };
+		var headers = { "X-API-KEY": "cf4d8e72-0ef2-47b7-a5fd-08e7ad3a2939" };
 
 		var url = apiUrl + "api/v2.1/films/search-by-keyword?keyword=" + encodeURIComponent(title);
 		if (card.imdb_id) {
