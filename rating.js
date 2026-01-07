@@ -418,10 +418,39 @@
 
 		if (!isNaN(kp) && kp > 0) {
 			$kp.removeClass("hide").find("> div").eq(0).text(kp.toFixed(1));
+			applyRatingColor($kp.find("> div").eq(0));
 		}
 
 		if (!isNaN(imdb) && imdb > 0) {
 			$imdb.removeClass("hide").find("> div").eq(0).text(imdb.toFixed(1));
+			applyRatingColor($imdb.find("> div").eq(0));
+		}
+	}
+
+	function applyRatingColor(element) {
+		if (!Lampa.Storage.get("si_colored_ratings", true)) return;
+
+		var $el = $(element);
+		var voteText = $el.text().trim();
+		var match = voteText.match(/(\d+(\.\d+)?)/);
+		if (!match) return;
+
+		var vote = parseFloat(match[0]);
+		var color = "";
+
+		if (vote >= 0 && vote <= 3) color = "red";
+		else if (vote > 3 && vote < 6) color = "orange";
+		else if (vote >= 6 && vote < 7) color = "cornflowerblue";
+		else if (vote >= 7 && vote < 8) color = "darkmagenta";
+		else if (vote >= 8 && vote <= 10) color = "lawngreen";
+
+		if (color) {
+			$el.css("color", color);
+			if (Lampa.Storage.get("si_rating_border", false)) {
+				if ($el.parent().hasClass("full-start__rate") || $el.parent().hasClass("rate--kp") || $el.parent().hasClass("rate--imdb") || $el.parent().hasClass("rate--cub")) {
+					$el.parent().css("border", "1px solid " + color);
+				}
+			}
 		}
 	}
 
@@ -489,6 +518,7 @@
 			var div = rateCub.removeClass("hide").find("> div");
 			div.eq(0).text(cub_rating_text);
 			div.eq(1).html('<img style="height:1.2em;margin:0 0.2em;" src="' + reactionSrc + '">');
+			applyRatingColor(div.eq(0));
 		}
 	}
 
