@@ -4,10 +4,6 @@
 	var preloadQueue = [];
 	var isPreloading = false;
 	var preloadTimer = null;
-	var dailyRequestCount = 0;
-	var maxDailyRequests = 400;
-	var requestDelay = 150;
-	var cacheLifetime = 2 * 86400000;
 
 	function preloadRating(card) {
 		if (!card || !card.id) return;
@@ -40,25 +36,17 @@
 			return;
 		}
 
-		if (dailyRequestCount >= maxDailyRequests) {
-			isPreloading = false;
-			preloadQueue = [];
-			return;
-		}
-
 		isPreloading = true;
 		var card = preloadQueue.shift();
 
 		fetchRating(card, function () {
 			fetchCubRating(card, function () {
-				setTimeout(processPreloadQueue, requestDelay);
+				setTimeout(processPreloadQueue, 50);
 			});
 		});
 	}
 
 	function fetchRating(card, callback) {
-		dailyRequestCount++;
-
 		var network = new Lampa.Reguest();
 		var title = kpCleanTitle(card.title || card.name || "");
 		var searchDate = card.release_date || card.first_air_date || card.last_air_date || "0000";
@@ -328,7 +316,7 @@
 
 		if (cache[id]) {
 			var age = Date.now() - cache[id].timestamp;
-			if (age < cacheLifetime) return cache[id];
+			if (age < 86400000) return cache[id];
 			delete cache[id];
 			Lampa.Storage.set("kp_rating", cache);
 		}
@@ -430,16 +418,16 @@
 
 		if (!isNaN(kp) && kp > 0) {
 			$kp.removeClass("hide").find("> div").eq(0).text(kp.toFixed(1));
-			applyRatingColor($kp.find("> div").eq(0), $kp);
+			applyRatingColor($kp.find("> div").eq(0), $kp.find("> div").eq(2));
 		}
 
 		if (!isNaN(imdb) && imdb > 0) {
 			$imdb.removeClass("hide").find("> div").eq(0).text(imdb.toFixed(1));
-			applyRatingColor($imdb.find("> div").eq(0), $imdb);
+			applyRatingColor($imdb.find("> div").eq(0), $imdb.find("> div").eq(2));
 		}
 	}
 
-	function applyRatingColor(element, rateContainer) {
+	function applyRatingColor(element, labelElement) {
 		if (!Lampa.Storage.get("si_colored_ratings", true)) return;
 
 		var $el = $(element);
@@ -458,11 +446,10 @@
 
 		if (color) {
 			$el.css("color", color);
-			var $container = rateContainer ? $(rateContainer) : $el.parent();
-			if ($container.hasClass("full-start__rate") || $container.hasClass("rate--kp") || $container.hasClass("rate--imdb") || $container.hasClass("rate--cub")) {
-				$container.find("> div").css("color", color);
-				if (Lampa.Storage.get("si_rating_border", false)) {
-					$container.css("border", "1px solid " + color);
+			if (labelElement) $(labelElement).css("color", color);
+			if (Lampa.Storage.get("si_rating_border", false)) {
+				if ($el.parent().hasClass("full-start__rate") || $el.parent().hasClass("rate--kp") || $el.parent().hasClass("rate--imdb") || $el.parent().hasClass("rate--cub")) {
+					$el.parent().css("border", "1px solid " + color);
 				}
 			}
 		}
@@ -532,7 +519,7 @@
 			var div = rateCub.removeClass("hide").find("> div");
 			div.eq(0).text(cub_rating_text);
 			div.eq(1).html('<img style="height:1.2em;margin:0 0.2em;" src="' + reactionSrc + '">');
-			applyRatingColor(div.eq(0), rateCub);
+			applyRatingColor(div.eq(0), div.eq(2));
 		}
 	}
 
